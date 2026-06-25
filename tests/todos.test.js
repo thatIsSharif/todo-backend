@@ -1,6 +1,13 @@
 const assert = require('node:assert/strict');
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, beforeEach, afterEach, after } = require('node:test');
 const http = require('http');
+const path = require('path');
+const fs = require('fs');
+
+// Use a temp DB for tests
+const TEST_DB_PATH = path.join(__dirname, 'test-todos.db');
+process.env.DB_PATH = TEST_DB_PATH;
+
 const store = require('../src/store');
 
 function createServer() {
@@ -51,6 +58,10 @@ describe('Todos API', () => {
     server.close();
   });
 
+  after(() => {
+    try { fs.unlinkSync(TEST_DB_PATH); } catch {}
+  });
+
   it('GET /api/todos returns an empty array initially', async () => {
     const res = await fetchJson(server, 'GET', '/api/todos');
     assert.equal(res.status, 200);
@@ -63,6 +74,7 @@ describe('Todos API', () => {
     assert.equal(res.body.title, 'Test todo');
     assert.equal(res.body.completed, false);
     assert.ok(res.body.id);
+    assert.ok(res.body.created_at);
   });
 
   it('POST /api/todos rejects empty title', async () => {
@@ -90,7 +102,52 @@ describe('Todos API', () => {
     const res = await fetchJson(server, 'GET', '/api/todos');
     assert.equal(res.status, 200);
     assert.equal(res.body.length, 2);
-    assert.equal(res.body[0].title, 'First todo');
-    assert.equal(res.body[1].title, 'Second todo');
+    const titles = res.body.map(t => t.title);
+    assert.ok(titles.includes('First todo'));
+    assert.ok(titles.includes('Second todo'));
+    assert.ok(res.body[0].created_at);
+    assert.ok(res.body[0].id);
+  });
+
+  it('POST /api/todos creates a todo with due_date', async () => {
+    const res = await fetchJson(server, 'POST', '/api/todos', { title: 'With due date', due_date: '2026-07-01' });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.title, 'With due date');
+    assert.equal(res.body.due_date, '2026-07-01');
+    assert.equal(res.body.completed, false);
+  });
+
+  it('POST /api/todos returns 400 for invalid due_date format', async () => {
+    const res = await fetchJson(server, 'POST', '/api/todos', { title: 'Bad date', due_date: 'not-a-date' });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, 'due_date must be a valid date in YYYY-MM-DD format');
+  });
+
+  it('POST /api/todos returns 400 for invalid date value', async () => {
+    const res = await fetchJson(server, 'POST', '/api/todos', { title: 'Bad date', due_date: '2026-13-01' });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, 'due_date must be a valid date');
+  });
+
+  it('GET /api/todos sorts by title asc', async () => {
+    await fetchJson(server, 'POST', '/api/todos', { title: 'Beta' });
+    await fetchJson(server, 'POST', '/api/todos', { title: 'Alpha' });
+
+    const res = await fetchJson(server, 'GET', '/api/todos?sort_by=title&order=asc');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 2);
+    assert.equal(res.body[0].title, 'Alpha');
+    assert.equal(res.body[1].title, 'Beta');
+  });
+
+  it('GET /api/todos sorts by title desc', async () => {
+    await fetchJson(server, 'POST', '/api/todos', { title: 'Alpha' });
+    await fetchJson(server, 'POST', '/api/todos', { title: 'Beta' });
+
+    const res = await fetchJson(server, 'GET', '/api/todos?sort_by=title&order=desc');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 2);
+    assert.equal(res.body[0].title, 'Beta');
+    assert.equal(res.body[1].title, 'Alpha');
   });
 });
