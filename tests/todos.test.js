@@ -93,4 +93,49 @@ describe('Todos API', () => {
     assert.equal(res.body[0].title, 'First todo');
     assert.equal(res.body[1].title, 'Second todo');
   });
+
+  it('PATCH /api/todos/:id updates completed status', async () => {
+    const created = await fetchJson(server, 'POST', '/api/todos', { title: 'Test todo' });
+    const todoId = created.body.id;
+
+    const res = await fetchJson(server, 'PATCH', `/api/todos/${todoId}`, { completed: true });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.id, todoId);
+    assert.equal(res.body.title, 'Test todo');
+    assert.equal(res.body.completed, true);
+  });
+
+  it('PATCH /api/todos/:id can uncomplete a todo', async () => {
+    const created = await fetchJson(server, 'POST', '/api/todos', { title: 'Test todo' });
+    const todoId = created.body.id;
+
+    await fetchJson(server, 'PATCH', `/api/todos/${todoId}`, { completed: true });
+    const res = await fetchJson(server, 'PATCH', `/api/todos/${todoId}`, { completed: false });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.completed, false);
+  });
+
+  it('PATCH /api/todos/:id returns 404 for non-existent todo', async () => {
+    const res = await fetchJson(server, 'PATCH', '/api/todos/999', { completed: true });
+    assert.equal(res.status, 404);
+    assert.equal(res.body.error, 'Todo not found');
+  });
+
+  it('PATCH /api/todos/:id rejects non-boolean completed', async () => {
+    const created = await fetchJson(server, 'POST', '/api/todos', { title: 'Test todo' });
+    const todoId = created.body.id;
+
+    const res = await fetchJson(server, 'PATCH', `/api/todos/${todoId}`, { completed: 'yes' });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, 'Completed status is required');
+  });
+
+  it('PATCH /api/todos/:id rejects missing completed field', async () => {
+    const created = await fetchJson(server, 'POST', '/api/todos', { title: 'Test todo' });
+    const todoId = created.body.id;
+
+    const res = await fetchJson(server, 'PATCH', `/api/todos/${todoId}`, {});
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, 'Completed status is required');
+  });
 });
