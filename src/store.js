@@ -11,9 +11,16 @@ function create(title) {
   return todo;
 }
 
+function updateCompleted(id, completed) {
+  const todo = todos.find((t) => t.id === id);
+  if (!todo) return null;
+  todo.completed = completed;
+  return todo;
+}
+
 function reset() {
   todos.length = 0;
   nextId = 1;
 }
 
-module.exports = { getAll, create, reset };
+module.exports = { getAll, create, updateCompleted, reset };
