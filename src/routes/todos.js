@@ -17,6 +17,15 @@ router.post('/', (req, res) => {
   res.status(201).json(todo);
 });
 
+router.delete('/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const todo = store.deleteById(id);
+  if (!todo) {
+    return res.status(404).json({ error: 'Todo not found' });
+  }
+  res.json(todo);
+});
+
 router.patch('/:id', (req, res) => {
   const id = Number(req.params.id);
   const { completed } = req.body;

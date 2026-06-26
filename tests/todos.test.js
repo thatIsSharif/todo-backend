@@ -138,4 +138,24 @@ describe('Todos API', () => {
     assert.equal(res.status, 400);
     assert.equal(res.body.error, 'Completed status is required');
   });
+
+  it('DELETE /api/todos/:id deletes an existing todo', async () => {
+    const created = await fetchJson(server, 'POST', '/api/todos', { title: 'Test todo' });
+    const todoId = created.body.id;
+
+    const res = await fetchJson(server, 'DELETE', `/api/todos/${todoId}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.id, todoId);
+    assert.equal(res.body.title, 'Test todo');
+
+    // Verify it's actually deleted
+    const getRes = await fetchJson(server, 'GET', '/api/todos');
+    assert.equal(getRes.body.length, 0);
+  });
+
+  it('DELETE /api/todos/:id returns 404 for non-existent todo', async () => {
+    const res = await fetchJson(server, 'DELETE', '/api/todos/999');
+    assert.equal(res.status, 404);
+    assert.equal(res.body.error, 'Todo not found');
+  });
 });
