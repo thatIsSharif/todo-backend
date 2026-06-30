@@ -1,9 +1,11 @@
 const express = require('express');
+const path = require('path');
 const todosRouter = require('./routes/todos');
 
 function createApp() {
   const app = express();
   app.use(express.json());
+  app.use(express.static(path.join(__dirname, '..', 'public')));
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
