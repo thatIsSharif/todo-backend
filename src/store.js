@@ -2,7 +2,7 @@ const todos = [];
 let nextId = 1;
 
 function getAll() {
-  return todos;
+  return [...todos];
 }
 
 function create(title) {
